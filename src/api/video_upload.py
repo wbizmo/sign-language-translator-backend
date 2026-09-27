@@ -1,6 +1,6 @@
 """Bounded-memory helpers for uploaded-video inference."""
 
-from typing import BinaryIO, Callable, List, Sequence, TypeVar
+from typing import BinaryIO, Callable, List, TypeVar
 
 import cv2
 import numpy as np
