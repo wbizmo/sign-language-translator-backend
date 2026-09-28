@@ -39,12 +39,13 @@ def _count_decodable_frames(
     video_path: str,
     capture_factory: Callable[[str], object],
 ) -> int:
-    """Count frames without retaining decoded RGB arrays."""
+    """Count frames that can actually be decoded without retaining their arrays."""
     capture = capture_factory(video_path)
     try:
         total_frames = 0
         while capture.isOpened():
-            if not capture.grab():
+            ok, _ = capture.read()
+            if not ok:
                 break
             total_frames += 1
         return total_frames
@@ -64,9 +65,9 @@ def extract_uniform_frames(
     """
     Return the legacy uniform sample sequence while retaining only sampled frames.
 
-    A lightweight first pass counts decodable frames without storing image arrays.
-    The second pass retains only unique target positions, keeping decoded-frame
-    memory bounded by the model sample count instead of total video duration.
+    The first pass decodes frames only to count the readable prefix and immediately
+    discards them. The second pass retains only unique target positions, keeping
+    decoded-frame memory bounded by the model sample count instead of video length.
     """
     total_frames = _count_decodable_frames(video_path, capture_factory)
     if total_frames == 0:
