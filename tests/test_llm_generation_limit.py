@@ -39,9 +39,12 @@ def test_interpret_glosses_uses_configured_generation_limit() -> None:
     assert keyword.value.attr == "LLM_MAX_LENGTH"
 
 
-def _load_config_with_limit(value: str) -> subprocess.CompletedProcess[str]:
+def _load_config_with_limit(value: str | None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["LLM_MAX_LENGTH"] = value
+    if value is None:
+        env.pop("LLM_MAX_LENGTH", None)
+    else:
+        env["LLM_MAX_LENGTH"] = value
     return subprocess.run(
         [
             sys.executable,
@@ -54,6 +57,13 @@ def _load_config_with_limit(value: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         check=False,
     )
+
+
+def test_default_llm_max_length_is_100() -> None:
+    result = _load_config_with_limit(None)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "100"
 
 
 def test_positive_llm_max_length_override_is_respected() -> None:
