@@ -78,6 +78,41 @@ class VideoMAESamplingTests(unittest.TestCase):
         self.assertEqual(len(decoder.call_args.args[0]), 16)
         self.assertLessEqual(len(decoder.call_args.args[0]), min(120, 16))
 
+    def test_unselected_invalid_frame_is_not_decoded(self):
+        encoded_frames = [f"frame-{index}" for index in range(120)]
+        encoded_frames[1] = "corrupt"
+
+        def decoder(frames):
+            if "corrupt" in frames:
+                raise ValueError("invalid frame")
+            return list(frames)
+
+        sampled = decode_uniformly_sampled_frames(
+            encoded_frames,
+            16,
+            decoder,
+        )
+
+        self.assertEqual(len(sampled), 16)
+        self.assertNotIn("corrupt", sampled)
+
+    def test_selected_invalid_frame_propagates_decoder_failure(self):
+        encoded_frames = [f"frame-{index}" for index in range(120)]
+        # Index 7 is selected by np.linspace(0, 119, 16).astype(int).
+        encoded_frames[7] = "corrupt"
+
+        def decoder(frames):
+            if "corrupt" in frames:
+                raise ValueError("invalid frame")
+            return list(frames)
+
+        with self.assertRaisesRegex(ValueError, "invalid frame"):
+            decode_uniformly_sampled_frames(
+                encoded_frames,
+                16,
+                decoder,
+            )
+
     def test_invalid_frame_counts_are_rejected(self):
         with self.assertRaises(ValueError):
             uniform_sample_indices(0, 16)
