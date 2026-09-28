@@ -18,10 +18,11 @@ class FakeUpload:
 
 
 class FakeCapture:
-    def __init__(self, frames, fail_read_at=None):
+    def __init__(self, frames, fail_read_at=None, stop_read_at=None):
         self.frames = list(frames)
         self.position = 0
         self.fail_read_at = fail_read_at
+        self.stop_read_at = stop_read_at
         self.released = False
 
     def isOpened(self):
@@ -36,6 +37,8 @@ class FakeCapture:
     def read(self):
         if self.fail_read_at is not None and self.position == self.fail_read_at:
             raise RuntimeError("decode failed")
+        if self.stop_read_at is not None and self.position >= self.stop_read_at:
+            return False, None
         if self.position >= len(self.frames):
             return False, None
         frame = self.frames[self.position]
@@ -47,14 +50,24 @@ class FakeCapture:
 
 
 class CaptureFactory:
-    def __init__(self, frames, fail_second_read_at=None):
+    def __init__(
+        self,
+        frames,
+        fail_second_read_at=None,
+        stop_read_at=None,
+    ):
         self.frames = list(frames)
         self.fail_second_read_at = fail_second_read_at
+        self.stop_read_at = stop_read_at
         self.instances = []
 
     def __call__(self, _video_path):
         fail_at = self.fail_second_read_at if len(self.instances) == 1 else None
-        capture = FakeCapture(self.frames, fail_read_at=fail_at)
+        capture = FakeCapture(
+            self.frames,
+            fail_read_at=fail_at,
+            stop_read_at=self.stop_read_at,
+        )
         self.instances.append(capture)
         return capture
 
@@ -128,6 +141,22 @@ class VideoUploadTests(unittest.TestCase):
                 convert_to_rgb=lambda frame: frame,
             )
 
+        self.assertEqual(len(factory.instances), 2)
+        self.assertTrue(all(capture.released for capture in factory.instances))
+
+    def test_counting_matches_legacy_readable_prefix_when_grab_outlives_read(self):
+        frames = list(range(20))
+        factory = CaptureFactory(frames, stop_read_at=10)
+        expected_indices = np.linspace(0, 9, 16).astype(int)
+
+        sampled = extract_uniform_frames(
+            "truncated.mp4",
+            16,
+            capture_factory=factory,
+            convert_to_rgb=lambda frame: frame,
+        )
+
+        self.assertEqual(sampled, [frames[index] for index in expected_indices])
         self.assertEqual(len(factory.instances), 2)
         self.assertTrue(all(capture.released for capture in factory.instances))
 
