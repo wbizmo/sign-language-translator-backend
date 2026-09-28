@@ -18,9 +18,10 @@ _CLOUD_ALIASES = {"cloud", "openrouter", "remote", "api"}
 
 
 def _with_bounded_chat_memory(service):
-    # Keep both backends on one memory implementation even while their service
-    # modules retain backward-compatible local ChatMemory definitions.
-    service.chat_memory = ChatMemory()
+    # Keep both backends on one memory implementation even while the local
+    # service module retains its backward-compatible ChatMemory definition.
+    if not isinstance(service.chat_memory, ChatMemory):
+        service.chat_memory = ChatMemory()
     return service
 
 
