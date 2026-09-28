@@ -113,6 +113,20 @@ class VideoMAESamplingTests(unittest.TestCase):
                 decoder,
             )
 
+    def test_decoder_output_count_must_match_unique_selected_frames(self):
+        encoded_frames = [f"frame-{index}" for index in range(60)]
+        decoder = Mock(side_effect=lambda frames: list(frames[:-1]))
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Decoder returned an unexpected number of frames",
+        ):
+            decode_uniformly_sampled_frames(
+                encoded_frames,
+                16,
+                decoder,
+            )
+
     def test_invalid_frame_counts_are_rejected(self):
         with self.assertRaises(ValueError):
             uniform_sample_indices(0, 16)
