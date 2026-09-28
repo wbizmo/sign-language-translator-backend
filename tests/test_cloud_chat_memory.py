@@ -78,6 +78,24 @@ class CloudSentenceServiceChatMemoryTests(unittest.TestCase):
 
         self.assertEqual(service.chat_memory.get_history("session-1"), [])
 
+    def test_later_provider_failure_preserves_existing_history_exactly(self):
+        service = self.make_service()
+        service.client.chat.completions.create.side_effect = [
+            make_response("First reply"),
+            RuntimeError("provider down"),
+        ]
+
+        service.chat("First message", session_id="session-1")
+        history_before_failure = service.chat_memory.get_history("session-1")
+
+        with self.assertRaisesRegex(RuntimeError, "provider down"):
+            service.chat("Second message", session_id="session-1")
+
+        self.assertEqual(
+            service.chat_memory.get_history("session-1"),
+            history_before_failure,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
