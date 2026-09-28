@@ -1,4 +1,5 @@
 from src.api.sentence_generation.chat_memory import ChatMemory
+from src.api.sentence_generation.factory import _with_bounded_chat_memory
 
 
 class FakeClock:
@@ -101,6 +102,15 @@ def test_returned_history_is_a_copy() -> None:
     history[0]["content"] = "mutated"
 
     assert memory.get_history("s")[0]["content"] == "u"
+
+
+def test_factory_replaces_backend_specific_memory_with_shared_bounded_memory() -> None:
+    class DummyService:
+        chat_memory = object()
+
+    service = _with_bounded_chat_memory(DummyService())
+
+    assert isinstance(service.chat_memory, ChatMemory)
 
 
 def test_invalid_limits_are_rejected() -> None:
